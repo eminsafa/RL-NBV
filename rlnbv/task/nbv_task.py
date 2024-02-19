@@ -82,7 +82,7 @@ class NBV:
 
     def get_raw_hemisphere_positions(self):
         self.raw_hemisphere_positions = []
-        with open("/Users/eminsafatok/dev/RL-NBV/rlnbv/simulation/bullet/tot_sort.txt", "r") as fin_sphere:
+        with open("tot_sort.txt", "r") as fin_sphere:
             for i in range(self.h_count):
                 raw_position = [float(val) for val in fin_sphere.readline().split()]
                 self.raw_hemisphere_positions.append(raw_position)
