@@ -44,15 +44,20 @@ class NBV:
 
         self.raw_hemisphere_positions = None
         self.hemisphere_a_and_e = []
+        self.pure_hemisphere_a_and_e = []
+        self.pure_hemisphere_poses = []
+        self.temp_hemisphere_poses = None
         self.get_raw_hemisphere_positions()
         self.init_hemisphere_poses()
         self.hemisphere_poses = None
 
         self.last_view_array = None
 
-        self.pure_hemisphere_a_and_e = None
-        self.pure_hemisphere_poses = []
-        self.temp_hemisphere_poses = None
+        try:
+            import google.colab
+            self.google_colab = True
+        except:
+            self.google_colab = False
 
     def create_scene(self) -> None:
         self.sim.create_scene(self.goal[:3], self.goal[3])
@@ -87,7 +92,11 @@ class NBV:
 
     def get_raw_hemisphere_positions(self):
         self.raw_hemisphere_positions = []
-        with open("tot_sort.txt", "r") as fin_sphere:
+        if self.google_colab:
+            path = "/content/RL-NBV/rlnbv/task/tot_sort.txt"
+        else:
+            path = "tot_sort.txt"
+        with open(path, "r") as fin_sphere:
             for i in range(self.h_count):
                 raw_position = [float(val) for val in fin_sphere.readline().split()]
                 self.raw_hemisphere_positions.append(raw_position)
@@ -106,7 +115,7 @@ class NBV:
             self.goal[2],
         ])
         self.goal = new_position
-        self.update_hemisphere_poses()
+        self.update_hemisphere_poses(action[0])
 
         new_view_array = self.get_view_array()
         success_count = self.compare_view_arrays(self.last_view_array, new_view_array)

@@ -1,3 +1,10 @@
+try:
+    import google.colab
+    import sys
+    sys.path.insert(1, '/content/RL-NBV')
+except:
+    pass
+
 import gymnasium as gym
 
 from stable_baselines3 import (
