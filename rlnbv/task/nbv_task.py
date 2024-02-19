@@ -36,6 +36,13 @@ class NBV:
         self.h_count = 32
         self.view_threshold = 0.25
 
+        # Google Colab Check
+        try:
+            import google.colab
+            self.google_colab = True
+        except:
+            self.google_colab = False
+
         self.reward_type = reward_type
         self.distance_threshold = distance_threshold
 
@@ -53,11 +60,7 @@ class NBV:
 
         self.last_view_array = None
 
-        try:
-            import google.colab
-            self.google_colab = True
-        except:
-            self.google_colab = False
+
 
     def create_scene(self) -> None:
         self.sim.create_scene(self.goal[:3], self.goal[3])
