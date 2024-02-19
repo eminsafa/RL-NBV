@@ -45,9 +45,14 @@ class NBV:
         self.raw_hemisphere_positions = None
         self.hemisphere_a_and_e = []
         self.get_raw_hemisphere_positions()
+        self.init_hemisphere_poses()
         self.hemisphere_poses = None
 
         self.last_view_array = None
+
+        self.pure_hemisphere_a_and_e = None
+        self.pure_hemisphere_poses = []
+        self.temp_hemisphere_poses = None
 
     def create_scene(self) -> None:
         self.sim.create_scene(self.goal[:3], self.goal[3])
@@ -69,16 +74,16 @@ class NBV:
             self.draw_hemisphere()
         self.sim.set_base_pose("target", self.goal[:3], np.array([0.0, 0.0, 0.0, 1.0]))
 
-    def reset_hemisphere_poses(self):
-        self.hemisphere_poses = []
+    def init_hemisphere_poses(self):
+        self.pure_hemisphere_poses = []
         for i in range(self.h_count):
             raw_position = self.raw_hemisphere_positions[i]
             orientation = get_azimuth_and_elevation(raw_position)
             a_orientation = get_azimuth_and_elevation_for_aim(raw_position)
-            self.hemisphere_a_and_e.append(a_orientation)
-            position = [raw_position[0] + self.goal[0], raw_position[1], raw_position[2]]
+            self.pure_hemisphere_a_and_e.append(a_orientation)
+            position = [raw_position[0], raw_position[1], raw_position[2]]
             orientation = list(self.sim.physics_client.getQuaternionFromEuler(orientation))
-            self.hemisphere_poses.append(position + orientation)
+            self.pure_hemisphere_poses.append(position + orientation)
 
     def get_raw_hemisphere_positions(self):
         self.raw_hemisphere_positions = []
@@ -101,13 +106,24 @@ class NBV:
             self.goal[2],
         ])
         self.goal = new_position
-        self.reset_hemisphere_poses()
+        self.update_hemisphere_poses()
 
         new_view_array = self.get_view_array()
         success_count = self.compare_view_arrays(self.last_view_array, new_view_array)
         self.last_view_array = new_view_array
 
         return success_count - 32
+
+    def reset_hemisphere_poses(self):
+        self.hemisphere_a_and_e = self.pure_hemisphere_a_and_e
+        self.hemisphere_poses = self.pure_hemisphere_poses
+
+    def update_hemisphere_poses(self, replacement):
+        self.temp_hemisphere_poses = []
+        for pose in self.hemisphere_poses:
+            pose[0] = pose[0] + replacement
+            self.temp_hemisphere_poses.append(pose)
+        self.hemisphere_poses = self.temp_hemisphere_poses
 
     def get_view_array(self):
         success_counter = 0
