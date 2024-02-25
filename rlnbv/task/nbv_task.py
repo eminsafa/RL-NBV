@@ -32,9 +32,11 @@ class NBV:
         self.goal = None
 
         # Hemisphere
-        self.draw = False
+        self.draw = True
         self.h_count = 32
         self.view_threshold = 0.25
+        self.max_reward = 0
+        self.min_reward = -50
 
         # Google Colab Check
         try:
@@ -46,14 +48,13 @@ class NBV:
         self.reward_type = reward_type
         self.distance_threshold = distance_threshold
 
-        self.goal_range_low = np.array([0.0, 0.0, 0.05, 0.05])  # position + radius
-        self.goal_range_high = np.array([0.9, 0.0, 0.05, 0.1])
+        self.goal_range_low = np.array([0.05, 0.0, 0.05, 0.05])  # position + radius
+        self.goal_range_high = np.array([0.9, 0.0, 0.05, 0.05])
 
-        self.raw_hemisphere_positions = None
-        self.hemisphere_a_and_e = []
-        self.pure_hemisphere_a_and_e = []
+        self.raw_hemisphere_positions = None  # RAW DATA FROM TOT FILE
+        # self.hemisphere_a_and_e = []
+        # self.pure_hemisphere_a_and_e = []
         self.pure_hemisphere_poses = []
-        self.temp_hemisphere_poses = None
         self.get_raw_hemisphere_positions()
         self.init_hemisphere_poses()
         self.hemisphere_poses = None
@@ -76,19 +77,23 @@ class NBV:
             self.create_scene()
 
         self.reset_hemisphere_poses()
-        self.last_view_array = self.get_view_array()
-
+        self.move_hemisphere_poses(self.goal[0])
+        
         if self.draw:
             self.draw_hemisphere()
+            
+        self.last_view_array, _ = self.get_view_array()
+
         self.sim.set_base_pose("target", self.goal[:3], np.array([0.0, 0.0, 0.0, 1.0]))
+        # print(f"position: {self.goal[:3]}\narray: {self.last_view_array}")
 
     def init_hemisphere_poses(self):
         self.pure_hemisphere_poses = []
         for i in range(self.h_count):
             raw_position = self.raw_hemisphere_positions[i]
             orientation = get_azimuth_and_elevation(raw_position)
-            a_orientation = get_azimuth_and_elevation_for_aim(raw_position)
-            self.pure_hemisphere_a_and_e.append(a_orientation)
+            # a_orientation = get_azimuth_and_elevation_for_aim(raw_position)
+            # self.pure_hemisphere_a_and_e.append(a_orientation)
             position = [raw_position[0], raw_position[1], raw_position[2]]
             orientation = list(self.sim.physics_client.getQuaternionFromEuler(orientation))
             self.pure_hemisphere_poses.append(position + orientation)
@@ -98,7 +103,7 @@ class NBV:
         if self.google_colab:
             path = "/content/RL-NBV/rlnbv/task/tot_sort.txt"
         else:
-            path = "tot_sort.txt"
+            path = "/home/furkanduman/dev/RL-NBV/rlnbv/task/tot_sort.txt"
         with open(path, "r") as fin_sphere:
             for i in range(self.h_count):
                 raw_position = [float(val) for val in fin_sphere.readline().split()]
@@ -112,57 +117,68 @@ class NBV:
         self.goal = goal
 
     def set_action(self, action: np.ndarray) -> int:
-        new_position = np.array([
-            min(0.8999, max(self.goal[0] + action[0], 0.001)),
+        # print(f"Action: {action}")
+        if not 0.0 < self.goal[0] + action[0] < 0.90:
+            return self.min_reward
+
+        self.goal = np.array([
+            self.goal[0] + action[0],
             self.goal[1],
             self.goal[2],
+            0.05,
         ])
-        self.goal = new_position
-        self.update_hemisphere_poses(action[0])
+        self.move_hemisphere_poses(action[0])
+        self.sim.set_base_pose("target", self.goal[:3], np.array([0.0, 0.0, 0.0, 1.0]))
 
-        new_view_array = self.get_view_array()
+        if self.draw:
+            self.sim.remove_hemisphere_poses(self.h_count)
+            self.draw_hemisphere()
+
+        new_view_array, count = self.get_view_array()
         success_count = self.compare_view_arrays(self.last_view_array, new_view_array)
         self.last_view_array = new_view_array
+
+        if count > 30:
+            return self.max_reward
 
         return success_count - 32
 
     def reset_hemisphere_poses(self):
-        self.hemisphere_a_and_e = self.pure_hemisphere_a_and_e
+        # self.hemisphere_a_and_e = self.pure_hemisphere_a_and_e
         self.hemisphere_poses = self.pure_hemisphere_poses
 
-    def update_hemisphere_poses(self, replacement):
-        self.temp_hemisphere_poses = []
+    def move_hemisphere_poses(self, replacement):
+        temp_hemisphere_poses = []
         for pose in self.hemisphere_poses:
-            pose[0] = pose[0] + replacement
-            self.temp_hemisphere_poses.append(pose)
-        self.hemisphere_poses = self.temp_hemisphere_poses
+            temp_pose = pose.copy()
+            temp_pose[0] = pose[0] + replacement
+            temp_hemisphere_poses.append(temp_pose)
+        self.hemisphere_poses = temp_hemisphere_poses
 
     def get_view_array(self):
-        success_counter = 0
         view_array = []
         for idx, i in enumerate(self.hemisphere_poses):
             position = i[:3]
             self.robot.set_joint_neutral()
-            any(self.sim.step() for _ in range(10))
-
-            self.robot.set_joint_neutral()
+            any(self.sim.step() for _ in range(2))
             orientation = i[3:]
             o = self.sim.physics_client.getEulerFromQuaternion(orientation)
             orientation = self.sim.physics_client.getQuaternionFromEuler([o[0], o[1] + 1.75, o[2]])
             ik = self.robot.calculate_inverse_kinematics(position, orientation)
             self.robot.set_joint_angles(ik)
-            for _ in range(100):
+            for _ in range(15):
                 if np.sum(self.robot.get_ee_velocity()) > 0.05:
                     self.sim.step()
                 else:
                     break
             position_distance = distance(self.robot.get_ee_position(), np.array(position))
             if position_distance < self.view_threshold:
-                success_counter += 1
                 view_array.append(True)
             else:
                 view_array.append(False)
-        return view_array
+        count = sum(1 for item in view_array if item)
+        # print("View count: {}".format(count))
+        return view_array, count
 
     def compare_view_arrays(self, last_view_array, new_view_array):
         count = 0

@@ -49,9 +49,6 @@ class PandaBulletEnv(BaseEnv):
                 yaw=self.render_yaw,
                 pitch=self.render_pitch,
             )
-        self.temp = None
-        self.pitch = None
-        self.a = None
 
     def reset(
         self, seed: Optional[int] = None, options: Optional[dict] = None
@@ -67,7 +64,10 @@ class PandaBulletEnv(BaseEnv):
 
     def step(self, action: np.ndarray):
         reward = self.task.set_action(action)
-        return np.array(self._get_obs(), dtype=np.float32), reward, False, False, {}
+        truncated = True if reward == self.task.min_reward else False
+        terminated = True if reward > -17 or reward == self.task.max_reward else False
+        # print("terminate")
+        return np.array(self._get_obs(), dtype=np.float32), reward, terminated, truncated, {}
 
     def close(self) -> None:
         self.sim.close()

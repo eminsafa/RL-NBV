@@ -9,6 +9,8 @@ import gymnasium as gym
 
 from stable_baselines3 import (
     TD3,
+DDPG,
+SAC
 )
 
 from trainer import Trainer
@@ -19,8 +21,8 @@ env = gym.make(
     render_mode="rgb_array",
 )
 
-model = TD3(policy="MlpPolicy", env=env, verbose=1)
+model = SAC(policy="MlpPolicy", env=env, verbose=1)
 
-trainer = Trainer(model=model, target_step=100_000)
+trainer = Trainer(model=model, target_step=500)
 
 trainer.train()

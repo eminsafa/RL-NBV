@@ -19,14 +19,14 @@ class BaseEnv(gym.Env):
         observation, _ = self.reset()
 
         observation_shape = observation.shape
-        self.observation_space = spaces.Box(low=np.array([-1.0, -0.01, -0.05]), high=np.array([1.0, 0.01, 0.06]), shape=observation_shape, dtype=np.float32)
+        self.observation_space = spaces.Box(low=np.array([-0.0, 0.0]), high=np.array([1.0, .5]), shape=observation_shape, dtype=np.float32)
 
         self.action_space = self.robot.action_space
         self.compute_reward = self.task.compute_reward
         # self._saved_goal = dict()
 
     def _get_obs(self) -> np.ndarray:
-        return np.array(self.task.goal[:3])
+        return np.array([self.task.goal[0], self.task.goal[3]])
 
     def reset(
         self, seed: Optional[int] = None, options: Optional[dict] = None

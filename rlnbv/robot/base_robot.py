@@ -21,7 +21,7 @@ class Robot(ABC):
         self.sim = sim
         self.orientation_task = orientation_task
         self.neutral_joint_values = np.array([0.0, 0.4, 0.0, -1.78, 0.0, 2.24, 0.77])
-        self.action_space = spaces.Box(-1.0, 1.0, shape=(1,), dtype=np.float32)  # 7 DOF
+        self.action_space = spaces.Box(-0.3, 0.3, shape=(1,), dtype=np.float32)
 
     def get_obs(self) -> np.ndarray:
         if self.orientation_task:
