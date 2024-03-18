@@ -10,16 +10,19 @@ env = PandaBulletEnv(render_mode="human")
 
 # env = PandaBulletEnv(render_mode="human")
 
+episode = 0
 env.reset()
 action = np.zeros(7)
-for i in range(1_000):
+sub_counter = 0
+for i in range(10_000):
     action = env.action_space.sample()
     observation, reward, terminated, truncated, info = env.step(action)
     if terminated or terminated:
+        sub_counter = 0
         env.reset()
     else:
-        print("reward: ", reward)
-        if i > 0 and i % 15 == 0:
+        if i > 0 and sub_counter % 15 == 0:
             env.reset()
-            print("\n\t=== NEW EPISODE ===\n")
-
+            episode += 1
+            print(f"\n\t=== NEW EPISODE - {episode} ===\n")
+    sub_counter += 1

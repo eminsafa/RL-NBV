@@ -8,6 +8,7 @@ import numpy as np
 import pybullet as p
 import pybullet_data
 import pybullet_utils.bullet_client as bc
+import logging
 
 from rlnbv.simulation import Simulation
 
@@ -39,6 +40,8 @@ class BulletSim(Simulation):
                 raise ValueError("The 'renderer' argument is must be in {'Tiny', 'OpenGL'}")
         else:
             raise ValueError("The 'render' argument is must be in {'rgb_array', 'human'}")
+        verbosity_level = logging.INFO
+        logging.basicConfig(level=verbosity_level)
         self.physics_client = bc.BulletClient(connection_mode=self.connection_mode, options=options)
         self.physics_client.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         self.physics_client.configureDebugVisualizer(p.COV_ENABLE_MOUSE_PICKING, 0)

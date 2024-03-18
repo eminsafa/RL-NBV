@@ -1,3 +1,5 @@
+from math import sqrt
+from random import choice as random_choice
 from typing import (
     Any,
     Dict,
@@ -32,7 +34,7 @@ class NBV:
         self.goal = None
 
         # Hemisphere
-        self.draw = True
+        self.draw = False
         self.h_count = 32
         self.view_threshold = 0.25
         self.max_reward = 0
@@ -49,19 +51,18 @@ class NBV:
         self.distance_threshold = distance_threshold
 
         self.goal_range_low = np.array([0.05, 0.0, 0.05, 0.05])  # position + radius
-        self.goal_range_high = np.array([0.9, 0.0, 0.05, 0.05])
+        self.goal_range_high = np.array([0.9, 0.0, 0.05, 0.15])
 
         self.raw_hemisphere_positions = None  # RAW DATA FROM TOT FILE
-        # self.hemisphere_a_and_e = []
-        # self.pure_hemisphere_a_and_e = []
         self.pure_hemisphere_poses = []
         self.get_raw_hemisphere_positions()
         self.init_hemisphere_poses()
         self.hemisphere_poses = None
 
         self.last_view_array = None
-
-
+        self.radius_options = self.create_radius_list(0.05, 0.25, 0.01)
+        self.max_pos_view_count = 30
+        self.min_pos_view_count = 20
 
     def create_scene(self) -> None:
         self.sim.create_scene(self.goal[:3], self.goal[3])
@@ -72,11 +73,12 @@ class NBV:
             if self.draw:
                 self.sim.remove_hemisphere_poses(self.h_count)
         self.goal = self._sample_goal()
+        self.goal[3] = random_choice(self.radius_options)
 
         with self.sim.no_rendering():
             self.create_scene()
 
-        self.reset_hemisphere_poses()
+        self.reset_hemisphere_poses(self.goal[3])
         self.move_hemisphere_poses(self.goal[0])
         
         if self.draw:
@@ -88,12 +90,14 @@ class NBV:
         # print(f"position: {self.goal[:3]}\narray: {self.last_view_array}")
 
     def init_hemisphere_poses(self):
+        """
+        Initialize hemisphere
+        :return:
+        """
         self.pure_hemisphere_poses = []
         for i in range(self.h_count):
             raw_position = self.raw_hemisphere_positions[i]
             orientation = get_azimuth_and_elevation(raw_position)
-            # a_orientation = get_azimuth_and_elevation_for_aim(raw_position)
-            # self.pure_hemisphere_a_and_e.append(a_orientation)
             position = [raw_position[0], raw_position[1], raw_position[2]]
             orientation = list(self.sim.physics_client.getQuaternionFromEuler(orientation))
             self.pure_hemisphere_poses.append(position + orientation)
@@ -125,7 +129,7 @@ class NBV:
             self.goal[0] + action[0],
             self.goal[1],
             self.goal[2],
-            0.05,
+            self.goal[3],
         ])
         self.move_hemisphere_poses(action[0])
         self.sim.set_base_pose("target", self.goal[:3], np.array([0.0, 0.0, 0.0, 1.0]))
@@ -135,17 +139,23 @@ class NBV:
             self.draw_hemisphere()
 
         new_view_array, count = self.get_view_array()
+        # new_view_array, count = [True for i in range(32)], 32
         success_count = self.compare_view_arrays(self.last_view_array, new_view_array)
         self.last_view_array = new_view_array
 
-        if count > 30:
+        # print(f"Radius {self.goal[3]} - Threshold {self.map_range(self.goal[3])}")
+        if count >= self.map_range(self.goal[3]):
             return self.max_reward
 
         return success_count - 32
 
-    def reset_hemisphere_poses(self):
+    def reset_hemisphere_poses(self, radius: float):
         # self.hemisphere_a_and_e = self.pure_hemisphere_a_and_e
-        self.hemisphere_poses = self.pure_hemisphere_poses
+        self.hemisphere_poses = []
+        for pure_pose in self.pure_hemisphere_poses:
+            self.hemisphere_poses.append(
+                self.get_pose_with_radius(pure_pose, radius)
+            )
 
     def move_hemisphere_poses(self, replacement):
         temp_hemisphere_poses = []
@@ -221,3 +231,20 @@ class NBV:
     def get_reachable_view_poses(self):
         pass
 
+    def get_pose_with_radius(self, pose, radius):
+        px, py, pz = pose[:3]
+        radius = (radius * 1.5) + 0.25
+        px_new = radius * (px / sqrt(pow(px, 2) + pow(py, 2) + pow(pz, 2)))
+        py_new = radius * (py / sqrt(pow(px, 2) + pow(py, 2) + pow(pz, 2)))
+        pz_new = radius * (pz / sqrt(pow(px, 2) + pow(py, 2) + pow(pz, 2)))
+        new_position = [px_new, py_new, pz_new]
+        return new_position + pose[3:]
+
+    def map_range(self, value):
+        in_range = self.radius_options[-1] - self.radius_options[0]
+        out_range = self.min_pos_view_count - self.max_pos_view_count
+        value_scaled = float(value - self.radius_options[0]) / float(in_range)
+        return self.max_pos_view_count + (value_scaled * out_range)
+
+    def create_radius_list(self, min_radius, max_radius, step):
+        return [round(min_radius + i * step, 2) for i in range(int((max_radius - min_radius) / step) + 1)]
