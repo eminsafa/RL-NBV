@@ -49,7 +49,7 @@ def train_model(env_id, total_loop, episodes_per_env, model_name="DDPG"):
         if episode_counts % episodes_per_env == 0:
             model.set_env(get_env())
 
-        trainer = Trainer(model=model, target_step=100, log_interval=10, directory_path=path)
+        trainer = Trainer(model=model, target_step=100, log_interval=2, directory_path=path)
         trainer.train()
         logs_path = os.path.join(path, "logs")
         merge_csv(logs_path + '/progress.csv', logs_path + '/merged.csv')
