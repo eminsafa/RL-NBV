@@ -49,6 +49,7 @@ class PandaBulletEnv(BaseEnv):
                 yaw=self.render_yaw,
                 pitch=self.render_pitch,
             )
+        self.last_success_count = None
 
     def reset(
         self, seed: Optional[int] = None, options: Optional[dict] = None
@@ -67,6 +68,7 @@ class PandaBulletEnv(BaseEnv):
         truncated = True if reward == self.task.min_reward else False
         terminated = True if reward > -17 or reward == self.task.max_reward else False
         # print("terminate")
+        self.last_success_count = self.task.last_success_count
         return np.array(self._get_obs(), dtype=np.float32), reward, terminated, truncated, {}
 
     def close(self) -> None:

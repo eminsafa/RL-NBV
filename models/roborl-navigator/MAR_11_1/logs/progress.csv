@@ -1,5 +1,0 @@
-time/fps,rollout/ep_len_mean,time/time_elapsed,time/episodes,rollout/ep_rew_mean,time/total_timesteps
-11,2.9,2,10,-77.4,29
-10,2.45,4,20,-58.95,49
-10,2.533333333333333,7,30,-63.333333333333336,76
-10,2.475,9,40,-60.025,99

@@ -39,6 +39,7 @@ class Trainer:
         self.model.learn(
             total_timesteps=int(self.target_training_step),
             log_interval=self.log_interval,  # episode number
+            reset_num_timesteps=False,
         )
         self.model.save(self.save_directory + '/model')
         self.model.save_replay_buffer(self.save_directory + '/replay_buffer')

@@ -1,3 +1,4 @@
+import os
 import gymnasium as gym
 
 from stable_baselines3 import (
@@ -17,9 +18,6 @@ def get_env():
     )
 
 
-import os
-
-
 def merge_csv(progress_file, merged_file):
     # Check if merged.csv exists and if it has content to determine if header needs to be skipped
     file_exists = os.path.isfile(merged_file)
@@ -35,15 +33,15 @@ def merge_csv(progress_file, merged_file):
             merged.writelines(lines[1:])  # Skip header otherwise
 
 
-# Usage
-merge_csv('progress.csv', 'merged.csv')
 
 raw_path = "/home/furkanduman/dev/RL-NBV/models/roborl-navigator/"
-log_interval = 100
+log_interval = 2
+target_timesteps = 500
 render_mode = "rgb_array"
 
 for model_name in ['DDPG', 'TD3', 'SAC']:
     path = raw_path + model_name
+    logs_path = os.path.join(path, "logs")
     target_steps = 10
     for i in range(target_steps):
         if i == 0:
@@ -54,11 +52,12 @@ for model_name in ['DDPG', 'TD3', 'SAC']:
             elif model_name == 'TD3':
                 model = TD3(policy="MlpPolicy", env=get_env(), verbose=1)
 
-            trainer = Trainer(model=model, target_step=500, log_interval=log_interval, directory_path=path)
+            trainer = Trainer(model=model, target_step=target_timesteps, log_interval=log_interval, directory_path=path)
         else:
             model.set_env(env=get_env())
-            trainer = Trainer(model=model, target_step=500, log_interval=log_interval, directory_path=path)
+            trainer = Trainer(model=model, target_step=target_timesteps, log_interval=log_interval, directory_path=path)
 
         trainer.train()
         print(f"\n\n\t\t >>>>> Step {i+1}/{target_steps}")
+        merge_csv(logs_path + '/progress.csv', logs_path + '/merged.csv')
         del trainer

@@ -60,6 +60,7 @@ class NBV:
         self.hemisphere_poses = None
 
         self.last_view_array = None
+        self.last_success_count = None
         self.radius_options = self.create_radius_list(0.05, 0.25, 0.01)
         self.max_pos_view_count = 30
         self.min_pos_view_count = 20
@@ -142,6 +143,7 @@ class NBV:
         # new_view_array, count = [True for i in range(32)], 32
         success_count = self.compare_view_arrays(self.last_view_array, new_view_array)
         self.last_view_array = new_view_array
+        self.last_success_count = success_count
 
         # print(f"Radius {self.goal[3]} - Threshold {self.map_range(self.goal[3])}")
         if count >= self.map_range(self.goal[3]):
